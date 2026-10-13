@@ -1,0 +1,61 @@
+
+name: Build REDX GAME TURBO APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "REDX-GAME-LAB-V2-ANDROID.zip"
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download repository files
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Extract Android project
+        run: |
+          if [ ! -f REDX-GAME-LAB-V2-ANDROID.zip ]; then
+            echo "ZIP proyek belum diunggah ke repository."
+            exit 1
+          fi
+          mkdir -p extracted
+          unzip -q REDX-GAME-LAB-V2-ANDROID.zip -d extracted
+
+      - name: Find Gradle wrapper
+        run: |
+          WRAPPER="$(find extracted -type f -name gradlew -print -quit)"
+          if [ -z "$WRAPPER" ]; then
+            echo "File gradlew tidak ditemukan di ZIP."
+            exit 1
+          fi
+          PROJECT_DIR="$(dirname "$WRAPPER")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          chmod +x "$WRAPPER"
+
+      - name: Build debug APK
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug --no-daemon
+          mkdir -p "$GITHUB_WORKSPACE/output"
+          cp app/build/outputs/apk/debug/*.apk "$GITHUB_WORKSPACE/output/"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: REDX-GAME-TURBO-APK
+          path: output/*.apk
+          if-no-files-found: error
+          
